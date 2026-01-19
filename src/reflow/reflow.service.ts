@@ -33,16 +33,17 @@ export function reflow(input: ReflowInput): ReflowOutput {
 
     scheduledOrders.set(scheduled.docId, scheduled);
 
-    if (order.data.startDate !== scheduled.data.startDate) {
-      const scheduleChange = {
+    const startChanged = order.data.startDate !== scheduled.data.startDate;
+    const endChanged = order.data.endDate !== scheduled.data.endDate;
+
+    if (startChanged || endChanged) {
+      changes.push({
         workOrderId: order.docId,
         previousStartDate: order.data.startDate,
         previousEndDate: order.data.endDate,
         newStartDate: scheduled.data.startDate,
         newEndDate: scheduled.data.endDate,
-      };
-
-      changes.push(scheduleChange);
+      });
     }
   }
 

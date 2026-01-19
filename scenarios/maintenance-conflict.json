@@ -1,0 +1,58 @@
+{
+  "description": "Maintenance Conflict: Order scheduled during maintenance window must split around it",
+  "workOrders": [
+    {
+      "docId": "wo-1",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-101",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-19T08:00:00.000Z",
+        "endDate": "2026-01-19T17:00:00.000Z",
+        "durationMinutes": 540,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    }
+  ],
+  "workCenters": [
+    {
+      "docId": "wc-1",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line 1",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 3, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 4, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 5, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": [
+          {
+            "startDate": "2026-01-19T10:00:00.000Z",
+            "endDate": "2026-01-19T14:00:00.000Z",
+            "reason": "Scheduled preventive maintenance"
+          }
+        ]
+      }
+    }
+  ],
+  "manufacturingOrders": [
+    {
+      "docId": "mo-1",
+      "docType": "manufacturingOrder",
+      "data": {
+        "manufacturingOrderNumber": "MO-101",
+        "itemId": "pipe-100mm",
+        "quantity": 50,
+        "dueDate": "2026-01-21T17:00:00.000Z"
+      }
+    }
+  ],
+  "expectedOutcome": {
+    "description": "9 hours of work with 4-hour maintenance gap (10am-2pm). Works Mon 8-10am (2hrs), pauses for maintenance, works Mon 2-5pm (3hrs), continues Tue 8am-12pm (4hrs).",
+    "wo-1": { "start": "2026-01-19T08:00:00.000Z", "end": "2026-01-20T12:00:00.000Z" }
+  }
+}

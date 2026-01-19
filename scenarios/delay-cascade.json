@@ -1,0 +1,82 @@
+{
+  "description": "Delay Cascade: Order A is delayed, which pushes dependent orders B and C",
+  "workOrders": [
+    {
+      "docId": "wo-A",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-001",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-19T08:00:00.000Z",
+        "endDate": "2026-01-19T12:00:00.000Z",
+        "durationMinutes": 240,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    },
+    {
+      "docId": "wo-B",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-002",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-19T10:00:00.000Z",
+        "endDate": "2026-01-19T12:00:00.000Z",
+        "durationMinutes": 120,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["wo-A"]
+      }
+    },
+    {
+      "docId": "wo-C",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-003",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-19T11:00:00.000Z",
+        "endDate": "2026-01-19T13:00:00.000Z",
+        "durationMinutes": 120,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["wo-B"]
+      }
+    }
+  ],
+  "workCenters": [
+    {
+      "docId": "wc-1",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line 1",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 3, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 4, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 5, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": []
+      }
+    }
+  ],
+  "manufacturingOrders": [
+    {
+      "docId": "mo-1",
+      "docType": "manufacturingOrder",
+      "data": {
+        "manufacturingOrderNumber": "MO-001",
+        "itemId": "pipe-50mm",
+        "quantity": 100,
+        "dueDate": "2026-01-23T17:00:00.000Z"
+      }
+    }
+  ],
+  "expectedOutcome": {
+    "description": "Order A runs 8am-12pm. Order B (depends on A) must wait until A finishes at 12pm, runs 12pm-2pm. Order C (depends on B) waits until B finishes at 2pm, runs 2pm-4pm.",
+    "wo-A": { "start": "2026-01-19T08:00:00.000Z", "end": "2026-01-19T12:00:00.000Z" },
+    "wo-B": { "start": "2026-01-19T12:00:00.000Z", "end": "2026-01-19T14:00:00.000Z" },
+    "wo-C": { "start": "2026-01-19T14:00:00.000Z", "end": "2026-01-19T16:00:00.000Z" }
+  }
+}

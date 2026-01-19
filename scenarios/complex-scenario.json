@@ -1,0 +1,103 @@
+{
+  "description": "Complex: Dependency cascade + work center conflict + weekend spanning",
+  "workOrders": [
+    {
+      "docId": "wo-A",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-001",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-23T08:00:00.000Z",
+        "endDate": "2026-01-23T12:00:00.000Z",
+        "durationMinutes": 240,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    },
+    {
+      "docId": "wo-B",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-002",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-23T10:00:00.000Z",
+        "endDate": "2026-01-23T14:00:00.000Z",
+        "durationMinutes": 240,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["wo-A"]
+      }
+    },
+    {
+      "docId": "wo-C",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-003",
+        "manufacturingOrderId": "mo-2",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-23T11:00:00.000Z",
+        "endDate": "2026-01-23T13:00:00.000Z",
+        "durationMinutes": 120,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": []
+      }
+    },
+    {
+      "docId": "wo-D",
+      "docType": "workOrder",
+      "data": {
+        "workOrderNumber": "WO-004",
+        "manufacturingOrderId": "mo-1",
+        "workCenterId": "wc-1",
+        "startDate": "2026-01-23T14:00:00.000Z",
+        "endDate": "2026-01-23T17:00:00.000Z",
+        "durationMinutes": 360,
+        "isMaintenance": false,
+        "dependsOnWorkOrderIds": ["wo-B"]
+      }
+    }
+  ],
+  "workCenters": [
+    {
+      "docId": "wc-1",
+      "docType": "workCenter",
+      "data": {
+        "name": "Extrusion Line 1",
+        "shifts": [
+          { "dayOfWeek": 1, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 2, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 3, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 4, "startHour": 8, "endHour": 17 },
+          { "dayOfWeek": 5, "startHour": 8, "endHour": 17 }
+        ],
+        "maintenanceWindows": []
+      }
+    }
+  ],
+  "manufacturingOrders": [
+    {
+      "docId": "mo-1",
+      "docType": "manufacturingOrder",
+      "data": {
+        "manufacturingOrderNumber": "MO-001",
+        "itemId": "pipe-50mm",
+        "quantity": 100,
+        "dueDate": "2026-01-30T17:00:00.000Z"
+      }
+    },
+    {
+      "docId": "mo-2",
+      "docType": "manufacturingOrder",
+      "data": {
+        "manufacturingOrderNumber": "MO-002",
+        "itemId": "pipe-75mm",
+        "quantity": 50,
+        "dueDate": "2026-01-30T17:00:00.000Z"
+      }
+    }
+  ],
+  "expectedOutcome": {
+    "description": "Fri: A runs 8am-12pm. C (conflict) pushed to 12pm-2pm. B (depends on A, conflict with C) pushed to 2pm, spans weekend (Fri 2-5pm + Mon 8-9am). D (depends on B) starts Mon 9am-3pm."
+  }
+}

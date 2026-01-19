@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DateTime } from 'luxon';
-import { getShiftForDay, getNextShiftStart, getShiftEndTime } from './date-utils.js';
+import { getShiftForDay, getNextShiftStart, getShiftEndTime, calculateEndDateWithShifts } from './date-utils.js';
 import type { Shift } from '../reflow/types.js';
 
 const STANDARD_SHIFTS: Shift[] = [
@@ -66,5 +66,28 @@ describe('getShiftEndTime', () => {
     const shift = { dayOfWeek: 1, startHour: 8, endHour: 17 };
     const result = getShiftEndTime(mon9am, shift);
     expect(result.toMillis()).toBe(mon5pm.toMillis());
+  });
+});
+
+describe('calculateEndDateWithShifts', () => {
+  it('60 min ends within same shift', () => {
+    const mon8am = DateTime.fromISO('2026-01-19T08:00:00Z');
+    const mon9am = DateTime.fromISO('2026-01-19T09:00:00Z');
+    const result = calculateEndDateWithShifts(mon8am, 60, STANDARD_SHIFTS);
+    expect(result.toMillis()).toBe(mon9am.toMillis());
+  });
+
+  it('120 min duration pushed end to overnight', () => {
+    const mon4pm = DateTime.fromISO('2026-01-19T16:00:00Z');
+    const tue9am = DateTime.fromISO('2026-01-20T09:00:00Z');
+    const result = calculateEndDateWithShifts(mon4pm, 120, STANDARD_SHIFTS);
+    expect(result.toMillis()).toBe(tue9am.toMillis());
+  });
+
+  it('120 min duration pushed end over the weekend', () => {
+    const fri4pm = DateTime.fromISO('2026-01-23T16:00:00Z');
+    const mon9am = DateTime.fromISO('2026-01-26T09:00:00Z');
+    const result = calculateEndDateWithShifts(fri4pm, 120, STANDARD_SHIFTS);
+    expect(result.toMillis()).toBe(mon9am.toMillis());
   });
 });

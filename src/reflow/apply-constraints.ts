@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import type { WorkOrder, WorkCenter } from './types.js';
-import { getNextShiftStart } from '../utils/date-utils.js';
+import { getNextShiftStart, calculateEndDateWithShifts } from '../utils/date-utils.js';
 
 export function applyConstraints(
   order: WorkOrder,
@@ -123,14 +123,14 @@ export function applyShiftConstraint(
   }
 
   const newStart = getNextShiftStart(originalStart, shifts);
-  // const newEnd = calculateEndDateWithShifts(newStart, duration, shifts);
+  const newEnd = calculateEndDateWithShifts(newStart, duration, shifts);
 
   return {
     ...order,
     data: {
       ...order.data,
       startDate: newStart.toISO()!,
-      // endDate: newEnd.toISO()!,
+      endDate: newEnd.toISO()!,
     },
   };
 }

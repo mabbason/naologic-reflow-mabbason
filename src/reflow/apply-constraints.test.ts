@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   applyDependencyConstraint,
   applyConflictConstraint,
+  applyShiftConstraint,
 } from './apply-constraints.js';
-import type { WorkOrder } from './types.js';
+import type { WorkOrder, WorkCenter } from './types.js';
 
 describe('applyDependencyConstraint', () => {
   it('pushes child start to after parent end when conflict exists', () => {
@@ -86,5 +87,89 @@ describe('applyConflictConstraint', () => {
 
     expect(result.data.startDate).toBe('2026-01-20T10:00:00.000Z');
     expect(result.data.endDate).toBe('2026-01-20T11:00:00.000Z');
+  });
+});
+
+describe('applyShiftConstraint', () => {
+  it('jumps workOrder start to shift and calculates end with shift-aware logic', () => {
+    const order: WorkOrder = {
+      docId: 'order-1',
+      docType: 'workOrder',
+      data: {
+        workOrderNumber: 'WO-1',
+        manufacturingOrderId: 'MO-1',
+        workCenterId: 'WC-1',
+        startDate: '2026-01-19T06:00:00.000Z',
+        endDate: '2026-01-19T07:00:00.000Z',
+        durationMinutes: 60,
+        isMaintenance: false,
+        dependsOnWorkOrderIds: [],
+      },
+    };
+
+    const workCenter: WorkCenter = {
+      docId: 'WC-1',
+      docType: 'workCenter',
+      data: {
+        name: 'Work Center 1',
+        shifts: [
+          { dayOfWeek: 1, startHour: 8, endHour: 17 },
+          { dayOfWeek: 2, startHour: 8, endHour: 17 },
+          { dayOfWeek: 3, startHour: 8, endHour: 17 },
+          { dayOfWeek: 4, startHour: 8, endHour: 17 },
+          { dayOfWeek: 5, startHour: 8, endHour: 17 },
+        ],
+        maintenanceWindows: [],
+      },
+    };
+
+    const workCenters = new Map<string, WorkCenter>();
+    workCenters.set('WC-1', workCenter);
+
+    const result = applyShiftConstraint(order, workCenters);
+
+    expect(result.data.startDate).toBe('2026-01-19T08:00:00.000Z');
+    expect(result.data.endDate).toBe('2026-01-19T09:00:00.000Z');
+  });
+
+  it('workOrder starts Friday and ends in weekend, correctly ends Monday', () => {
+    const order: WorkOrder = {
+      docId: 'order-1',
+      docType: 'workOrder',
+      data: {
+        workOrderNumber: 'WO-1',
+        manufacturingOrderId: 'MO-1',
+        workCenterId: 'WC-1',
+        startDate: '2026-01-23T16:00:00.000Z',
+        endDate: '2026-01-23T18:00:00.000Z',
+        durationMinutes: 120,
+        isMaintenance: false,
+        dependsOnWorkOrderIds: [],
+      },
+    };
+
+    const workCenter: WorkCenter = {
+      docId: 'WC-1',
+      docType: 'workCenter',
+      data: {
+        name: 'Work Center 1',
+        shifts: [
+          { dayOfWeek: 1, startHour: 8, endHour: 17 },
+          { dayOfWeek: 2, startHour: 8, endHour: 17 },
+          { dayOfWeek: 3, startHour: 8, endHour: 17 },
+          { dayOfWeek: 4, startHour: 8, endHour: 17 },
+          { dayOfWeek: 5, startHour: 8, endHour: 17 },
+        ],
+        maintenanceWindows: [],
+      },
+    };
+
+    const workCenters = new Map<string, WorkCenter>();
+    workCenters.set('WC-1', workCenter);
+
+    const result = applyShiftConstraint(order, workCenters);
+
+    expect(result.data.startDate).toBe('2026-01-23T16:00:00.000Z');
+    expect(result.data.endDate).toBe('2026-01-26T09:00:00.000Z');
   });
 });

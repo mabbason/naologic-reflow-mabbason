@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 import type { Shift } from '../reflow/types.js';
 
+const MS_PER_MINUTE = 60000;
+
 export function getShiftForDay(
   dayOfWeek: number,
   shifts: Shift[]
@@ -47,14 +49,33 @@ export function getShiftEndTime(time: DateTime, shift: Shift): DateTime {
   return utcTime.set({ hour: shift.endHour, minute: 0, second: 0, millisecond: 0 });
 }
 
-// export function calculateEndDateWithShifts(
-//   start: DateTime,
-//   durationMinutes: number,
-//   shifts: Shift[]
-// ): DateTime {
-//   /*
-//     I think this is trickier part
-//       - what if shift ends in middle of duration
-//       - what is that pushes over the weekend, etc
-//   */
-// }
+export function calculateEndDateWithShifts(
+  start: DateTime,
+  durationMinutes: number,
+  shifts: Shift[]
+): DateTime {
+  const toDayOfWeek = (dt: DateTime) => (dt.weekday === 7 ? 0 : dt.weekday);
+
+  let remainingMinsInWorkOrder = durationMinutes;
+  let current = start.toUTC();
+
+  while (remainingMinsInWorkOrder) {
+    const shift = getShiftForDay(toDayOfWeek(current), shifts);
+    if (!shift) {
+      current = getNextShiftStart(current, shifts);
+      continue;
+    }
+
+    const shiftEnd = getShiftEndTime(current, shift);
+    const availableMinutes = (shiftEnd.toMillis() - current.toMillis()) / MS_PER_MINUTE;
+
+    if (availableMinutes >= remainingMinsInWorkOrder) {
+      return current.plus({ minutes: remainingMinsInWorkOrder });
+    }
+
+    remainingMinsInWorkOrder -= availableMinutes;
+    current = getNextShiftStart(shiftEnd, shifts);
+  }
+
+  return current;
+}

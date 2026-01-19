@@ -11,6 +11,7 @@ export interface WorkOrder {
     startDate: string;
     endDate: string;
     durationMinutes: number;
+    // @upgrade: Add setup time, mentioned in original test
 
     // Constraints
     isMaintenance: boolean;
@@ -65,7 +66,7 @@ export interface ScheduleChange {
   previousEndDate: string;
   newStartDate: string;
   newEndDate: string;
-  // need something else here? more detail or explanation?
+  // @upgrade: Add reason/explanation explaining why the change occurred
 }
 
 export interface ReflowOutput {

@@ -1,6 +1,8 @@
 # Production Schedule Reflow
 
-A production scheduler that reschedules work orders when disruptions occur, respecting dependencies, work center conflicts, shift boundaries, and maintenance windows.
+Hey guys! Miles Abbason here...
+
+This here is a manufacturing production scheduler that reschedules work orders when disruptions occur for things like dependencies, work center conflicts, shift boundaries, and maintenance windows.
 
 ## Setup
 
@@ -65,3 +67,20 @@ scenarios/
 - **Work Center Conflicts** - Only one order at a time per work center
 - **Shift Boundaries** - Work only during shift hours
 - **Maintenance Windows** - No work during maintenance periods
+
+## NOT Handled
+- **Performance Metrics** - Especially given some of the algorithms, I think it makes sense that seeing some larger test data, like you guys mentioned in the video, makes a whole lot of sense here. This probably would have been my favorite thing to add because it would have been much faster feedback regarding the algorithm decisions
+and optimizations.
+- **Optimizations** - I was also really hoping to get to some of the optimizations here. The priority queue was already commented, but I'm guessing once some performance metrics had gone in, it would have been easier to consider additional places for improvement. 
+- **Edge Cases & Error Handling** - Given some of my prior experience with similar scheduling work, I know that additional time spent in this area would really pay off. I suspect that it would really raise a harsh light on some potential things that my current implementation might be missing.
+
+## AI Tooling Use
+
+I used Claude Code intermittently throughout the challenge for:
+- **Algorithm Design** - Initial planning and approach validation (see `prompts/` folder for raw transcripts)
+  - provided a decision priorities document to guide the AI's advice toward practical trade-offs over theoretical perfection.
+  - for all of the initial prompts I used AI to help draft a more focused initial prompt
+- **Implementation Feedback** - Shift calculation logic and maintenance window integration
+- **Test Data** - Generating sample scenarios and the scenario runner script
+- **Documentation** - First draft of this README
+

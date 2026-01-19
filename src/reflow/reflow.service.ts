@@ -20,15 +20,8 @@ export function reflow(input: ReflowInput): ReflowOutput {
   const scheduledOrders = new Map<string, WorkOrder>();
   const changes: ScheduleChange[] = [];
 
+  // @upgrade: Use priority queue for better performance on large datasets, see algo conversation
   for (const order of sortedWorkOrdersByDep) {
-    /* Apply constraints in order (each can only push later, never earlier)
-       this should work bc see "greedy forward pass" from algo conversation
-
-       deps are sorted already so everything just gets moved back until everything
-       is already in place... Not optimized but correct at least
-
-       *** OPTIMIZATON NOTE: Priority Queue update later???
-    */
     const scheduled = applyConstraints(order, scheduledOrders, workCenterMap);
 
     scheduledOrders.set(scheduled.docId, scheduled);
@@ -43,6 +36,7 @@ export function reflow(input: ReflowInput): ReflowOutput {
         previousEndDate: order.data.endDate,
         newStartDate: scheduled.data.startDate,
         newEndDate: scheduled.data.endDate,
+        // @upgrade: Add reason/explanation explaining why the change occurred
       });
     }
   }
@@ -128,15 +122,9 @@ export function sortByDependencies(
     }
   }
 
+  // @upgrade: finshi the traceCycle function, see: algo-design conversation
   if (result.length < workOrders.length) {
-    /*
-      FROM algorithm convo, if have time or are stuck this traces the cycle
-      debugging && UX so we can find the work order cycle
-
-      const stuck = orders.filter(o => !processed.has(o.id))
-      const cyclePath = traceCycle(stuck, dependencyMap)  // Follow edges until we return to start
-      throw new Error(`Circular dependency: ${cyclePath.join(' → ')}`)
-    */
+    throw new Error('Circular dependency in work orders');
   }
 
   return result;

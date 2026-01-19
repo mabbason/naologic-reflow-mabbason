@@ -73,7 +73,7 @@ function applyConstraints(
   let scheduled = order;
 
   scheduled = applyDependencyConstraint(scheduled, scheduledOrders);
-  // scheduled = applyConflictConstraint(scheduled, scheduledOrders);
+  scheduled = applyConflictConstraint(scheduled, scheduledOrders);
   // scheduled = applyShiftConstraint(scheduled);
   // scheduled = applyMaintenanceConstraint(scheduled);
 
@@ -212,4 +212,42 @@ export function sortByDependencies(
   }
 
   return result;
+}
+
+export function applyConflictConstraint(
+  order: WorkOrder,
+  scheduledOrders: Map<string, WorkOrder>
+): WorkOrder {
+  const workCenterId = order.data.workCenterId;
+
+  let latestEndOnWorkCenter = DateTime.fromISO(order.data.startDate);
+
+  for (const scheduled of scheduledOrders.values()) {
+    if (scheduled.data.workCenterId !== workCenterId) {
+      continue;
+    }
+
+    const scheduledEnd = DateTime.fromISO(scheduled.data.endDate);
+    if (scheduledEnd > latestEndOnWorkCenter) {
+      latestEndOnWorkCenter = scheduledEnd;
+    }
+  }
+
+  const orderStart = DateTime.fromISO(order.data.startDate);
+
+  if (orderStart >= latestEndOnWorkCenter) {
+    return order;
+  }
+
+  const newStart = latestEndOnWorkCenter.toUTC();
+  const newEnd = newStart.plus({ minutes: order.data.durationMinutes });
+
+  return {
+    ...order,
+    data: {
+      ...order.data,
+      startDate: newStart.toISO()!,
+      endDate: newEnd.toISO()!,
+    },
+  };
 }

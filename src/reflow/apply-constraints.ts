@@ -1,9 +1,11 @@
 import { DateTime } from 'luxon';
-import type { WorkOrder } from './types.js';
+import type { WorkOrder, WorkCenter } from './types.js';
+import { getNextShiftStart } from '../utils/date-utils.js';
 
 export function applyConstraints(
   order: WorkOrder,
-  scheduledOrders: Map<string, WorkOrder>
+  scheduledOrders: Map<string, WorkOrder>,
+  workCenters: Map<string, WorkCenter>
 ): WorkOrder {
   if (order.data.isMaintenance) {
     return order;
@@ -13,8 +15,8 @@ export function applyConstraints(
 
   scheduled = applyDependencyConstraint(scheduled, scheduledOrders);
   scheduled = applyConflictConstraint(scheduled, scheduledOrders);
-  // scheduled = applyShiftConstraint(scheduled);
-  // scheduled = applyMaintenanceConstraint(scheduled);
+  scheduled = applyShiftConstraint(scheduled, workCenters);
+  // scheduled = applyMaintenanceConstraint(scheduled, workCenters);
 
   return scheduled;
 }
@@ -95,6 +97,40 @@ export function applyConflictConstraint(
       ...order.data,
       startDate: newStart.toISO()!,
       endDate: newEnd.toISO()!,
+    },
+  };
+}
+
+export function applyShiftConstraint(
+  order: WorkOrder,
+  workCenters: Map<string, WorkCenter>
+): WorkOrder {
+  const workCenter = workCenters.get(order.data.workCenterId);
+  if (!workCenter) {
+    throw new Error(`Work center "${order.data.workCenterId}" not found`);
+  }
+
+  const shifts = workCenter.data.shifts;
+  if (shifts.length === 0) {
+    throw new Error(`Work center "${order.data.workCenterId}" has no shifts`);
+  }
+
+  const originalStart = DateTime.fromISO(order.data.startDate);
+  const duration = order.data.durationMinutes;
+
+  if (duration === 0) {
+    return order;
+  }
+
+  const newStart = getNextShiftStart(originalStart, shifts);
+  // const newEnd = calculateEndDateWithShifts(newStart, duration, shifts);
+
+  return {
+    ...order,
+    data: {
+      ...order.data,
+      startDate: newStart.toISO()!,
+      // endDate: newEnd.toISO()!,
     },
   };
 }

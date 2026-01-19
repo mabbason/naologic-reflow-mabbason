@@ -1,5 +1,6 @@
 import type {
   WorkOrder,
+  WorkCenter,
   ReflowInput,
   ReflowOutput,
   DependencyGraph,
@@ -8,24 +9,27 @@ import type {
 import { applyConstraints } from './apply-constraints.js';
 
 export function reflow(input: ReflowInput): ReflowOutput {
-  const { workOrders } = input;
+  const { workOrders, workCenters } = input;
 
   const depGraph = buildDependencyGraph(workOrders);
   const sortedWorkOrdersByDep = sortByDependencies(depGraph, workOrders);
 
+  const workCenterMap = new Map<string, WorkCenter>(
+    workCenters.map((wc) => [wc.docId, wc])
+  );
   const scheduledOrders = new Map<string, WorkOrder>();
   const changes: ScheduleChange[] = [];
 
   for (const order of sortedWorkOrdersByDep) {
     /* Apply constraints in order (each can only push later, never earlier)
        this should work bc see "greedy forward pass" from algo conversation
-       
+
        deps are sorted already so everything just gets moved back until everything
        is already in place... Not optimized but correct at least
 
        *** OPTIMIZATON NOTE: Priority Queue update later???
     */
-    const scheduled = applyConstraints(order, scheduledOrders);
+    const scheduled = applyConstraints(order, scheduledOrders, workCenterMap);
 
     scheduledOrders.set(scheduled.docId, scheduled);
 

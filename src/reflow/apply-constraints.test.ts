@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   applyDependencyConstraint,
   applyConflictConstraint,
-  applyShiftConstraint,
+  applyShiftAndMaintenanceConstraints,
 } from './apply-constraints.js';
 import type { WorkOrder, WorkCenter } from './types.js';
 
@@ -90,7 +90,7 @@ describe('applyConflictConstraint', () => {
   });
 });
 
-describe('applyShiftConstraint', () => {
+describe('applyShiftAndMaintenanceConstraints', () => {
   it('jumps workOrder start to shift and calculates end with shift-aware logic', () => {
     const order: WorkOrder = {
       docId: 'order-1',
@@ -126,7 +126,7 @@ describe('applyShiftConstraint', () => {
     const workCenters = new Map<string, WorkCenter>();
     workCenters.set('WC-1', workCenter);
 
-    const result = applyShiftConstraint(order, workCenters);
+    const result = applyShiftAndMaintenanceConstraints(order, workCenters);
 
     expect(result.data.startDate).toBe('2026-01-19T08:00:00.000Z');
     expect(result.data.endDate).toBe('2026-01-19T09:00:00.000Z');
@@ -167,9 +167,53 @@ describe('applyShiftConstraint', () => {
     const workCenters = new Map<string, WorkCenter>();
     workCenters.set('WC-1', workCenter);
 
-    const result = applyShiftConstraint(order, workCenters);
+    const result = applyShiftAndMaintenanceConstraints(order, workCenters);
 
     expect(result.data.startDate).toBe('2026-01-23T16:00:00.000Z');
     expect(result.data.endDate).toBe('2026-01-26T09:00:00.000Z');
+  });
+
+  it('splits work around maintenance window', () => {
+    const order: WorkOrder = {
+      docId: 'order-1',
+      docType: 'workOrder',
+      data: {
+        workOrderNumber: 'WO-1',
+        manufacturingOrderId: 'MO-1',
+        workCenterId: 'WC-1',
+        startDate: '2026-01-19T08:00:00.000Z',
+        endDate: '2026-01-19T17:00:00.000Z',
+        durationMinutes: 540,
+        isMaintenance: false,
+        dependsOnWorkOrderIds: [],
+      },
+    };
+
+    const workCenter: WorkCenter = {
+      docId: 'WC-1',
+      docType: 'workCenter',
+      data: {
+        name: 'Work Center 1',
+        shifts: [
+          { dayOfWeek: 1, startHour: 8, endHour: 17 },
+          { dayOfWeek: 2, startHour: 8, endHour: 17 },
+          { dayOfWeek: 3, startHour: 8, endHour: 17 },
+          { dayOfWeek: 4, startHour: 8, endHour: 17 },
+          { dayOfWeek: 5, startHour: 8, endHour: 17 },
+        ],
+        maintenanceWindows: [
+          { startDate: '2026-01-19T10:00:00.000Z', endDate: '2026-01-19T14:00:00.000Z' },
+        ],
+      },
+    };
+
+    const workCenters = new Map<string, WorkCenter>();
+    workCenters.set('WC-1', workCenter);
+
+    const result = applyShiftAndMaintenanceConstraints(order, workCenters);
+
+    // 9hrs work, 4hr maintenance gap should force end of workOrder to Tuesday
+    expect(result.data.startDate).toBe('2026-01-19T08:00:00.000Z');
+    expect(result.data.endDate).toBe('2026-01-20T12:00:00.000Z');
   });
 });

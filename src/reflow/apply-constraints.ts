@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import type { WorkOrder, WorkCenter } from './types.js';
-import { getNextShiftStart, calculateEndDateWithShifts } from '../utils/date-utils.js';
+import { jumpToNextAvailableTime, calculateEndDateWithShifts } from '../utils/date-utils.js';
 
 export function applyConstraints(
   order: WorkOrder,
@@ -15,8 +15,7 @@ export function applyConstraints(
 
   scheduled = applyDependencyConstraint(scheduled, scheduledOrders);
   scheduled = applyConflictConstraint(scheduled, scheduledOrders);
-  scheduled = applyShiftConstraint(scheduled, workCenters);
-  // scheduled = applyMaintenanceConstraint(scheduled, workCenters);
+  scheduled = applyShiftAndMaintenanceConstraints(scheduled, workCenters);
 
   return scheduled;
 }
@@ -101,7 +100,7 @@ export function applyConflictConstraint(
   };
 }
 
-export function applyShiftConstraint(
+export function applyShiftAndMaintenanceConstraints(
   order: WorkOrder,
   workCenters: Map<string, WorkCenter>
 ): WorkOrder {
@@ -115,6 +114,7 @@ export function applyShiftConstraint(
     throw new Error(`Work center "${order.data.workCenterId}" has no shifts`);
   }
 
+  const maintenanceWindows = workCenter.data.maintenanceWindows;
   const originalStart = DateTime.fromISO(order.data.startDate);
   const duration = order.data.durationMinutes;
 
@@ -122,8 +122,8 @@ export function applyShiftConstraint(
     return order;
   }
 
-  const newStart = getNextShiftStart(originalStart, shifts);
-  const newEnd = calculateEndDateWithShifts(newStart, duration, shifts);
+  const newStart = jumpToNextAvailableTime(originalStart, shifts, maintenanceWindows);
+  const newEnd = calculateEndDateWithShifts(newStart, duration, shifts, maintenanceWindows);
 
   return {
     ...order,

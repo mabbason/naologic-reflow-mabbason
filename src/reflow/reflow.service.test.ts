@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildDependencyGraph, sortByDependencies } from './reflow.service.js';
+import {
+  buildDependencyGraph,
+  sortByDependencies,
+  applyDependencyConstraint,
+} from './reflow.service.js';
 import type { WorkOrder } from './types.js';
 
 describe('buildDependencyGraph', () => {
@@ -115,5 +119,52 @@ describe('topologicalSort', () => {
     expect(sorted[0]!.docId).toBe('A');
     expect(sorted[1]!.docId).toBe('B');
     expect(sorted[2]!.docId).toBe('C');
+  });
+});
+
+describe('applyDependencyConstraint', () => {
+  it('pushes child start to after parent end when conflict exists', () => {
+    /*
+      Child order set to start while the parent order should only be halfway done. 
+    */
+
+    const parentOrder: WorkOrder = {
+      docId: 'parent',
+      docType: 'workOrder',
+      data: {
+        workOrderNumber: 'WO-PARENT',
+        manufacturingOrderId: 'MO-1',
+        workCenterId: 'WC-1',
+        startDate: '2026-01-20T08:00:00.000Z',
+        endDate: '2026-01-20T10:00:00.000Z',
+        durationMinutes: 120,
+        isMaintenance: false,
+        dependsOnWorkOrderIds: [],
+      },
+    };
+
+    const childOrder: WorkOrder = {
+      docId: 'child',
+      docType: 'workOrder',
+      data: {
+        workOrderNumber: 'WO-CHILD',
+        manufacturingOrderId: 'MO-1',
+        workCenterId: 'WC-1',
+        startDate: '2026-01-20T09:00:00.000Z',
+        endDate: '2026-01-20T10:00:00.000Z',
+        durationMinutes: 60,
+        isMaintenance: false,
+        dependsOnWorkOrderIds: ['parent'],
+      },
+    };
+
+    const scheduledOrders = new Map<string, WorkOrder>();
+    scheduledOrders.set('parent', parentOrder);
+
+    const result = applyDependencyConstraint(childOrder, scheduledOrders);
+
+    // Child order should start at the end of the parent order. 
+    expect(result.data.startDate).toBe('2026-01-20T10:00:00.000Z');
+    expect(result.data.endDate).toBe('2026-01-20T11:00:00.000Z');
   });
 });

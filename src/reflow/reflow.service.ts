@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
   WorkOrder,
   // WorkCenter, prolly need these later
@@ -30,7 +31,7 @@ export function reflow(input: ReflowInput): ReflowOutput {
 
        *** OPTIMIZATON NOTE: Priority Queue update later???
     */
-    const scheduled = applyConstraints(order);
+    const scheduled = applyConstraints(order, scheduledOrders);
 
     scheduledOrders.set(scheduled.docId, scheduled);
 
@@ -61,32 +62,64 @@ export function reflow(input: ReflowInput): ReflowOutput {
     4. Add shift logic (hardest part!)
     5. Add maintenance windows
 */
-function applyConstraints(order: WorkOrder): WorkOrder {
-  // Skip maintenance orders, cannot be rescheduled
+function applyConstraints(
+  order: WorkOrder,
+  scheduledOrders: Map<string, WorkOrder>
+): WorkOrder {
   if (order.data.isMaintenance) {
     return order;
   }
 
   let scheduled = order;
 
-  scheduled = applyDependencyConstraint(scheduled);
-  // scheduled = applyConflictConstraint(scheduled);
+  scheduled = applyDependencyConstraint(scheduled, scheduledOrders);
+  // scheduled = applyConflictConstraint(scheduled, scheduledOrders);
   // scheduled = applyShiftConstraint(scheduled);
   // scheduled = applyMaintenanceConstraint(scheduled);
 
   return scheduled;
 }
 
-function applyDependencyConstraint(order: WorkOrder): WorkOrder {
-  /*
-    All parents need to have completed before this can start
-    keep bumping start date back until it is later than all parents endDate
+export function applyDependencyConstraint(
+  order: WorkOrder,
+  scheduledOrders: Map<string, WorkOrder>
+): WorkOrder {
+  const parentIds = order.data.dependsOnWorkOrderIds;
+  if (parentIds.length === 0) {
+    return order;
+  }
 
-    For each parent in graph.childToParents
-      - If order starts before parent ends, push order start to parent end
-  */
+  let latestParentEnd = DateTime.fromISO(order.data.startDate);
 
-  return order;
+  for (const parentId of parentIds) {
+    const parent = scheduledOrders.get(parentId);
+    if (!parent) {
+      throw new Error(`Parent work order "${parentId}" not found in scheduled orders`);
+    }
+
+    const parentEnd = DateTime.fromISO(parent.data.endDate);
+    if (parentEnd > latestParentEnd) {
+      latestParentEnd = parentEnd;
+    }
+  }
+
+  const orderStart = DateTime.fromISO(order.data.startDate);
+
+  if (orderStart >= latestParentEnd) {
+    return order;
+  }
+
+  const newStart = latestParentEnd.toUTC();
+  const newEnd = newStart.plus({ minutes: order.data.durationMinutes });
+
+  return {
+    ...order,
+    data: {
+      ...order.data,
+      startDate: newStart.toISO()!,
+      endDate: newEnd.toISO()!,
+    },
+  };
 }
 
 // relates all work orders to each other in parent/child relationship arrays

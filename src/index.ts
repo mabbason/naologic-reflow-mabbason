@@ -1,3 +1,2 @@
-export * from './types/index.js';
-
-// @upgrade: Add reflow service export once implemented
+export * from './reflow/types.js';
+export * from './reflow/reflow.service.js';

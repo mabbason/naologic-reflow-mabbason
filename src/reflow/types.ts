@@ -1,23 +1,25 @@
+// Domain types (from spec)
 export interface WorkOrder {
   docId: string;
-  docType: "workOrder";
+  docType: 'workOrder';
   data: {
     workOrderNumber: string;
     manufacturingOrderId: string;
     workCenterId: string;
-    
+
     // Timing
-    startDate: string;              
-    endDate: string;                
-    durationMinutes: number;        // Total working time required
-    
+    startDate: string;
+    endDate: string;
+    durationMinutes: number;
+
     // Constraints
-    isMaintenance: boolean;         // Cannot be rescheduled if true
-    
+    isMaintenance: boolean;
+
     // Dependencies (can have multiple parents)
-    dependsOnWorkOrderIds: string[]; // All must complete before this starts
-  }
+    dependsOnWorkOrderIds: string[];
+  };
 }
+
 export interface Shift {
   dayOfWeek: number;
   startHour: number;
@@ -49,4 +51,29 @@ export interface ManufacturingOrder {
     quantity: number;
     dueDate: string;
   };
+}
+
+export interface ReflowInput {
+  workOrders: WorkOrder[];
+  workCenters: WorkCenter[];
+  manufacturingOrders: ManufacturingOrder[];
+}
+
+export interface ScheduleChange {
+  workOrderId: string;
+  previousStartDate: string;
+  previousEndDate: string;
+  newStartDate: string;
+  newEndDate: string;
+  // need something else here? more detail or explanation?
+}
+
+export interface ReflowOutput {
+  updatedWorkOrders: WorkOrder[];
+  changes: ScheduleChange[];
+}
+
+export interface DependencyGraph {
+  parentToChildren: Map<string, Set<string>>;
+  childToParents: Map<string, Set<string>>;
 }

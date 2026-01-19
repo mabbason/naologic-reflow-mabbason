@@ -16,7 +16,7 @@ export function reflow(input: ReflowInput): ReflowOutput {
   const depGraph = buildDependencyGraph(workOrders);
 
   // Sort deps by which one goes first
-  const sortedWorkOrdersByDep = topologicalSort(depGraph, workOrders);
+  const sortedWorkOrdersByDep = sortByDependencies(depGraph, workOrders);
 
   const scheduledOrders = new Map<string, WorkOrder>();
   const changes: ScheduleChange[] = [];
@@ -90,29 +90,93 @@ function applyDependencyConstraint(order: WorkOrder): WorkOrder {
 }
 
 // relates all work orders to each other in parent/child relationship arrays
-function buildDependencyGraph(
+export function buildDependencyGraph(
   workOrders: WorkOrder[]
 ): DependencyGraph {
   const parentToChildren = new Map<string, Set<string>>();
   const childToParents = new Map<string, Set<string>>();
 
 
-  workOrders.forEach(() => {})
-  /*
-    forEach workOrder
-      add to childToParents and parentToChildren
-  */
+    workOrders.forEach((order) => {
+      const childId = order.docId;
+      const parentIds = order.data.dependsOnWorkOrderIds;
+
+      childToParents.set(childId, new Set(parentIds));
+
+      for (const parentId of parentIds) {
+        let children = parentToChildren.get(parentId);
+        if (!children) {
+          children = new Set();
+          parentToChildren.set(parentId, children);
+        }
+        children.add(childId);
+      }
+    });
 
   return { parentToChildren, childToParents };
 }
 
-function topologicalSort(
+export function sortByDependencies(
   depGraph: DependencyGraph,
   workOrders: WorkOrder[]
 ): WorkOrder[] {
-  workOrders.forEach(() => {})
-  /*
-    see algorithm conversation Kahn algorithm??
-  */
-  return [];
+  const { parentToChildren, childToParents } = depGraph;
+
+  const workOrderMap = new Map<string, WorkOrder>(
+    workOrders.map(wo => [wo.docId, wo])
+  );
+
+  const parentsWaitingOn = new Map<string, number>();
+  for (const wo of workOrders) {
+    const parents = childToParents.get(wo.docId);
+    parentsWaitingOn.set(wo.docId, parents?.size ?? 0);
+  }
+
+  const readyToSchedule: string[] = [];
+  for (const [docId, waitingOn] of parentsWaitingOn) {
+    if (waitingOn === 0) {
+      readyToSchedule.push(docId);
+    }
+  }
+
+  const result: WorkOrder[] = [];
+
+  while (readyToSchedule.length > 0) {
+    const docId = readyToSchedule.shift()!;
+    const wo = workOrderMap.get(docId);
+    if (wo) {
+      result.push(wo);
+    }
+
+    // This order is done - update children to go to next "layer" of deps
+    const children = parentToChildren.get(docId);
+    if (children) {
+      for (const childId of children) {
+        const waitingOnCount = parentsWaitingOn.get(childId);
+        if (waitingOnCount === undefined) {
+          throw new Error(`Work order "${childId}" referenced but not provided`);
+        }
+
+        const remainingParents = waitingOnCount - 1;
+        parentsWaitingOn.set(childId, remainingParents);
+
+        if (remainingParents === 0) {
+          readyToSchedule.push(childId);
+        }
+      }
+    }
+  }
+
+  if (result.length < workOrders.length) {
+    /*
+      FROM algorithm convo, if have time or are stuck this traces the cycle
+      debugging && UX so we can find the work order cycle
+
+      const stuck = orders.filter(o => !processed.has(o.id))
+      const cyclePath = traceCycle(stuck, dependencyMap)  // Follow edges until we return to start
+      throw new Error(`Circular dependency: ${cyclePath.join(' → ')}`)
+    */
+  }
+
+  return result;
 }

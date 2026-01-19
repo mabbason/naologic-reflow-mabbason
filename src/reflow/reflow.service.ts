@@ -1,22 +1,16 @@
-import { DateTime } from 'luxon';
 import type {
   WorkOrder,
-  // WorkCenter, prolly need these later
-  // ManufacturingOrder,
   ReflowInput,
   ReflowOutput,
   DependencyGraph,
   ScheduleChange,
 } from './types.js';
+import { applyConstraints } from './apply-constraints.js';
 
-// MAIN ENTRY - START HERE
 export function reflow(input: ReflowInput): ReflowOutput {
   const { workOrders } = input;
 
-  // Build dependency graph, dependency relationships (parent/child)
   const depGraph = buildDependencyGraph(workOrders);
-
-  // Sort deps by which one goes first
   const sortedWorkOrdersByDep = sortByDependencies(depGraph, workOrders);
 
   const scheduledOrders = new Map<string, WorkOrder>();
@@ -42,8 +36,8 @@ export function reflow(input: ReflowInput): ReflowOutput {
         previousEndDate: order.data.endDate,
         newStartDate: scheduled.data.startDate,
         newEndDate: scheduled.data.endDate,
-      }
-      
+      };
+
       changes.push(scheduleChange);
     }
   }
@@ -54,97 +48,26 @@ export function reflow(input: ReflowInput): ReflowOutput {
   };
 }
 
-/*
-  **Start simple, add complexity gradually:**
-    1. Get basic reflow working (ignore shifts)
-    2. Add dependencies
-    3. Add work center conflicts
-    4. Add shift logic (hardest part!)
-    5. Add maintenance windows
-*/
-function applyConstraints(
-  order: WorkOrder,
-  scheduledOrders: Map<string, WorkOrder>
-): WorkOrder {
-  if (order.data.isMaintenance) {
-    return order;
-  }
-
-  let scheduled = order;
-
-  scheduled = applyDependencyConstraint(scheduled, scheduledOrders);
-  scheduled = applyConflictConstraint(scheduled, scheduledOrders);
-  // scheduled = applyShiftConstraint(scheduled);
-  // scheduled = applyMaintenanceConstraint(scheduled);
-
-  return scheduled;
-}
-
-export function applyDependencyConstraint(
-  order: WorkOrder,
-  scheduledOrders: Map<string, WorkOrder>
-): WorkOrder {
-  const parentIds = order.data.dependsOnWorkOrderIds;
-  if (parentIds.length === 0) {
-    return order;
-  }
-
-  let latestParentEnd = DateTime.fromISO(order.data.startDate);
-
-  for (const parentId of parentIds) {
-    const parent = scheduledOrders.get(parentId);
-    if (!parent) {
-      throw new Error(`Parent work order "${parentId}" not found in scheduled orders`);
-    }
-
-    const parentEnd = DateTime.fromISO(parent.data.endDate);
-    if (parentEnd > latestParentEnd) {
-      latestParentEnd = parentEnd;
-    }
-  }
-
-  const orderStart = DateTime.fromISO(order.data.startDate);
-
-  if (orderStart >= latestParentEnd) {
-    return order;
-  }
-
-  const newStart = latestParentEnd.toUTC();
-  const newEnd = newStart.plus({ minutes: order.data.durationMinutes });
-
-  return {
-    ...order,
-    data: {
-      ...order.data,
-      startDate: newStart.toISO()!,
-      endDate: newEnd.toISO()!,
-    },
-  };
-}
-
-// relates all work orders to each other in parent/child relationship arrays
-export function buildDependencyGraph(
-  workOrders: WorkOrder[]
-): DependencyGraph {
+export function buildDependencyGraph(workOrders: WorkOrder[]): DependencyGraph {
   const parentToChildren = new Map<string, Set<string>>();
   const childToParents = new Map<string, Set<string>>();
 
 
-    workOrders.forEach((order) => {
-      const childId = order.docId;
-      const parentIds = order.data.dependsOnWorkOrderIds;
+  workOrders.forEach((order) => {
+    const childId = order.docId;
+    const parentIds = order.data.dependsOnWorkOrderIds;
 
-      childToParents.set(childId, new Set(parentIds));
+    childToParents.set(childId, new Set(parentIds));
 
-      for (const parentId of parentIds) {
-        let children = parentToChildren.get(parentId);
-        if (!children) {
-          children = new Set();
-          parentToChildren.set(parentId, children);
-        }
-        children.add(childId);
+    for (const parentId of parentIds) {
+      let children = parentToChildren.get(parentId);
+      if (!children) {
+        children = new Set();
+        parentToChildren.set(parentId, children);
       }
-    });
+      children.add(childId);
+    }
+  });
 
   return { parentToChildren, childToParents };
 }
@@ -212,42 +135,4 @@ export function sortByDependencies(
   }
 
   return result;
-}
-
-export function applyConflictConstraint(
-  order: WorkOrder,
-  scheduledOrders: Map<string, WorkOrder>
-): WorkOrder {
-  const workCenterId = order.data.workCenterId;
-
-  let latestEndOnWorkCenter = DateTime.fromISO(order.data.startDate);
-
-  for (const scheduled of scheduledOrders.values()) {
-    if (scheduled.data.workCenterId !== workCenterId) {
-      continue;
-    }
-
-    const scheduledEnd = DateTime.fromISO(scheduled.data.endDate);
-    if (scheduledEnd > latestEndOnWorkCenter) {
-      latestEndOnWorkCenter = scheduledEnd;
-    }
-  }
-
-  const orderStart = DateTime.fromISO(order.data.startDate);
-
-  if (orderStart >= latestEndOnWorkCenter) {
-    return order;
-  }
-
-  const newStart = latestEndOnWorkCenter.toUTC();
-  const newEnd = newStart.plus({ minutes: order.data.durationMinutes });
-
-  return {
-    ...order,
-    data: {
-      ...order.data,
-      startDate: newStart.toISO()!,
-      endDate: newEnd.toISO()!,
-    },
-  };
 }
